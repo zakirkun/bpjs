@@ -66,3 +66,9 @@ MyComponent.router?.addRoute('/', HomeComponent);
 MyComponent.router?.addRoute('/about', AboutComponent);
   
 MyComponent.mount(document.getElementById("#app")!);
+
+// Navigation handler
+(window as any).navigate = (event: Event, path: string) => {
+  event.preventDefault();
+  MyComponent.router?.navigate(path);
+};
