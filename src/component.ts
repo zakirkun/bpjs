@@ -1,5 +1,6 @@
 import { CustomDirective } from './directive';
 import { reactive, effect } from './reactive';
+import { Router } from './router';
 
 type StateValue = string | number | boolean | any[] | Record<string, any>;
 
@@ -16,6 +17,7 @@ interface ComponentOptions<S extends Record<string, StateValue>> {
   beforeDestroy?: () => void;
   destroyed?: () => void;
   directives?: Record<string, CustomDirective>;
+  router?: Router;
 }
 
 export class Component<S extends Record<string, StateValue>> {
@@ -25,6 +27,7 @@ export class Component<S extends Record<string, StateValue>> {
   private element: HTMLElement;
   private methods: Record<string, (this: S, event?: Event) => void>;
   private directives: Record<string, CustomDirective>;
+  public router?: Router;
 
   private hooks: {
     beforeCreate?: () => void;
@@ -62,6 +65,12 @@ export class Component<S extends Record<string, StateValue>> {
 
     // Call Template
     this.element = document.createElement('div');
+
+     // Initialize the router if defined
+     if (options.router) {
+      this.router = options.router;
+      this.router.setRootElement(this.element);
+    }
 
     // Call the created hook
     if (this.hooks.created) this.hooks.created();
@@ -182,19 +191,14 @@ export class Component<S extends Record<string, StateValue>> {
     this.applyDirectives();
   }
 
-  mount(selector: string) {
-    const mountPoint = document.querySelector(selector);
-    if (mountPoint) {
-      // Call the beforeMount hook
-      if (this.hooks.beforeMount) this.hooks.beforeMount();
+  mount(parentElement: HTMLElement) {
+    // Call the beforeMount hook
+    if (this.hooks.beforeMount) this.hooks.beforeMount();
 
-      mountPoint.appendChild(this.element);
+    parentElement.appendChild(this.element);
 
-       // Call the mounted hook
-       if (this.hooks.mounted) this.hooks.mounted();
-    } else {
-      throw Error(`Mount point "${selector}" not found.`);
-    }
+    // Call the mounted hook
+    if (this.hooks.mounted) this.hooks.mounted();
   }
 
   public destroy() {
