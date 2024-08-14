@@ -8,6 +8,7 @@ interface ComponentOptions<S extends Record<string, StateValue>> {
   template: string;
   data: () => S;
   methods?: Record<string, (this: S, event?: Event) => void>;
+  components?: Record<string, Component<any>>;
   beforeCreate?: () => void;
   created?: () => void;
   beforeMount?: () => void;
@@ -27,6 +28,7 @@ export class Component<S extends Record<string, StateValue>> {
   private element: HTMLElement;
   private methods: Record<string, (this: S, event?: Event) => void>;
   private directives: Record<string, CustomDirective>;
+  private components: Record<string, Component<any>>;
   public router?: Router;
 
   private hooks: {
@@ -63,6 +65,9 @@ export class Component<S extends Record<string, StateValue>> {
      // Call the beforeCreate hook
      if (this.hooks.beforeCreate) this.hooks.beforeCreate();
 
+     // Call Components
+     this.components = options.components || {};
+
     // Call Template
     this.element = document.createElement('div');
 
@@ -79,6 +84,7 @@ export class Component<S extends Record<string, StateValue>> {
     effect(() => {
       this.updateDom();
       this.addEventListeners();
+      this.bindEvents();
     });
 
      // Call the beforeMount hook
@@ -119,6 +125,10 @@ export class Component<S extends Record<string, StateValue>> {
       }
       return value;
     });
+
+
+    // Dynamic Binding
+    parsedTemplate = this.renderTemplate(parsedTemplate);
 
      // Handle v-if, v-else-if, v-else
      parsedTemplate = this.handleConditionalRendering(parsedTemplate);
@@ -167,6 +177,43 @@ export class Component<S extends Record<string, StateValue>> {
     });
   }
 
+  // Render the template with dynamic data and child components
+  private renderTemplate(template: string): string {    
+    // Replace data bindings
+    for (const key in this.state) {
+      const value = this.state[key];
+      const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
+      template = template.replace(regex, value.toString());
+    }
+
+    // Replace component placeholders with their respective HTML
+    for (const componentName in this.components) {
+      const regex = new RegExp(`<${componentName}></${componentName}>`, 'g');
+      template = template.replace(regex, `<div id="${componentName}"></div>`);
+    }
+
+    return template;
+  }
+
+  // Bind events to the dynamic elements
+  private bindEvents(): void {
+    const eventAttribute = 'v-on:';
+    const elements = this.element.querySelectorAll(`[${eventAttribute}]`);
+
+    elements.forEach((element) => {
+      const attributeName = Array.from(element.attributes).find(attr => attr.name.startsWith(eventAttribute));
+      if (!attributeName) return;
+
+      const event = attributeName.name.replace(eventAttribute, '');
+      const methodName = attributeName.value;
+      const handler = this.methods[methodName];
+
+      if (handler) {
+        element.addEventListener(event, handler.bind(this.state));
+      }
+    });
+  }
+
   private addEventListeners() {
     const eventPattern = /@(\w+)="(.*?)"/g;
     let match;
@@ -189,9 +236,11 @@ export class Component<S extends Record<string, StateValue>> {
 
     this.addEventListeners();
     this.applyDirectives();
+    this.bindEvents();
+    this.mountChildComponents();
   }
 
-  mount(parentElement: HTMLElement) {
+  mount(parentElement: HTMLElement): void {
     // Call the beforeMount hook
     if (this.hooks.beforeMount) this.hooks.beforeMount();
 
@@ -219,5 +268,17 @@ export class Component<S extends Record<string, StateValue>> {
 
     // Update the DOM to reflect the new state
     this.updateDom();
+  }
+
+  // Mount child components inside their respective placeholders
+  private mountChildComponents(): void {
+    for (const componentName in this.components) {
+      const placeholder = this.element.querySelector(`#${componentName}`);
+      const component = this.components[componentName];
+
+      if (placeholder && component) {
+        component.mount(placeholder as HTMLElement);
+      }
+    }
   }
 }

@@ -1,5 +1,4 @@
-import { Component, CustomDirective } from "../src";
-import { Router } from "../src/router";
+import { Component, CustomDirective } from "..";
 import AboutComponent from "./pages/Abouts";
 import HomeComponent from "./pages/Home";
 
@@ -9,7 +8,6 @@ const myDirective: CustomDirective = {
       el.style.color = binding;
     }
   };
-  
   
   const MyComponent = new Component({
     template: `

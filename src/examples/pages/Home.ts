@@ -1,4 +1,4 @@
-import { Component } from "../../src"
+import { Component } from "../..";
 
 // Define child components
 const HomeComponent = new Component({
